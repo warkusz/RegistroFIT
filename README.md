@@ -23,16 +23,16 @@ Aplicacao web desenvolvida como projeto PAP para planeamento e acompanhamento de
     <th align="center">Dashboard</th>
   </tr>
   <tr>
-    <td align="center"><img src="assets/main.png" width="400"/></td>
-    <td align="center"><img src="assets/dashboard.png" width="400"/></td>
+    <td align="center"><img src="assets/main.png" width="600"/></td>
+    <td align="center"><img src="assets/dashboard.png" width="600"/></td>
   </tr>
   <tr>
     <th align="center">Calendário</th>
     <th align="center">Perfil</th>
   </tr>
   <tr>
-    <td align="center"><img src="assets/calendario.png" width="400"/></td>
-    <td align="center"><img src="assets/perfil.png" width="400"/></td>
+    <td align="center"><img src="assets/calendario.png" width="600"/></td>
+    <td align="center"><img src="assets/perfil.png" width="600"/></td>
   </tr>
 </table>
 
