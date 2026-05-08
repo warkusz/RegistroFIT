@@ -13,6 +13,30 @@
 # RegistoFIT
 
 Aplicacao web desenvolvida como projeto PAP para planeamento e acompanhamento de treinos.
+<div align="center">
+
+### Screenshots
+
+<table border="0" cellpadding="8" cellspacing="0">
+  <tr>
+    <th align="center">Pagina Principal</th>
+    <th align="center">Dashboard</th>
+  </tr>
+  <tr>
+    <td align="center"><img src="assets/main.png" width="400"/></td>
+    <td align="center"><img src="assets/dashboard.png" width="400"/></td>
+  </tr>
+  <tr>
+    <th align="center">Calendário</th>
+    <th align="center">Perfil</th>
+  </tr>
+  <tr>
+    <td align="center"><img src="assets/calendario.png" width="400"/></td>
+    <td align="center"><img src="assets/perfil.png" width="400"/></td>
+  </tr>
+</table>
+
+</div>
 
 ## Sobre o projeto
 
