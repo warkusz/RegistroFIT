@@ -75,7 +75,7 @@ O foco do projeto e oferecer uma interface simples, rapida e organizada para o u
 - Navegador (Chrome/Edge)
 2) COLOCAR O PROJETO NA PASTA CERTA
 - Copiar a pasta do projeto para:
-  C:\xampp\htdocs\PAP-WorkoutPlanner-main
+  C:\xampp\htdocs\RegistroFIT-main
 3) INICIAR SERVICOS NO XAMPP
 - Abrir “XAMPP Control Panel”
 - Clicar Start em:
@@ -86,6 +86,7 @@ O foco do projeto e oferecer uma interface simples, rapida e organizada para o u
 - Abrir no browser:
   http://localhost/phpmyadmin
 - Ir ao separador SQL e executar ESTE BLOCO:
+  
 CREATE DATABASE IF NOT EXISTS papdb
   CHARACTER SET utf8mb4
   COLLATE utf8mb4_general_ci;
@@ -101,6 +102,7 @@ CREATE TABLE IF NOT EXISTS utilizadores (
   foto_perfil VARCHAR(255) DEFAULT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 5) NOTA IMPORTANTE SOBRE AS OUTRAS TABELAS
 - As tabelas seguintes sao criadas automaticamente pela aplicacao quando o utilizador entra nas paginas:
   - workout_days
@@ -110,23 +112,22 @@ CREATE TABLE IF NOT EXISTS utilizadores (
 - Ou seja, basta a tabela “utilizadores” existir para arrancar normalmente.
 6) VERIFICAR FICHEIRO DE CONEXAO (SE NECESSARIO)
 - Abrir:
-  C:\xampp\htdocs\PAP-WorkoutPlanner-main\conexao.php
+  C:\xampp\htdocs\RegistroFIT-main\conexao.php
 - Confirmar que esta assim:
   host = localhost
   user = papuser
   pass = pap123
   db   = papdb
-- Se no computador do juri a password/user forem diferentes, alterar aqui.
 7) ABRIR O PROJETO
 - URL inicial:
-  http://localhost/PAP-WorkoutPlanner-main/index.html
+  http://localhost/RegistroFIT-main/index.html
 - Registar conta:
-  http://localhost/PAP-WorkoutPlanner-main/register.php
+  http://localhost/RegistroFIT-main/register.php
 - Login:
-  http://localhost/PAP-WorkoutPlanner-main/login.php
+  http://localhost/RegistroFIT-main/login.php
 8) PERMISSOES PARA FOTO DE PERFIL (IMPORTANTE)
 - A aplicacao guarda fotos em:
-  C:\xampp\htdocs\PAP-WorkoutPlanner-main\uploads\profile_photos
+  C:\xampp\htdocs\RegistroFIT-main\uploads\profile_photos
 - Se der erro de upload, criar manualmente esta pasta e garantir permissao de escrita.
 9) CHECKLIST RAPIDO (SE NAO ABRIR)
 - Apache ligado? MySQL ligado?
