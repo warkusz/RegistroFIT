@@ -1,0 +1,205 @@
+:root {
+    /* Variáveis globais para manter identidade visual consistente no projeto. */
+    /* Paleta principal da identidade visual (preto + vermelho). */
+    --rf-black: #0a0a0a;
+    --rf-black-soft: #141414;
+    --rf-red: #c8102e;
+    --rf-red-hover: #a80d27;
+    --rf-text: #f5f5f5;
+    --rf-muted: #c7c7c7;
+}
+
+body {
+    /* Fundo global com imagem de ginásio + fallback escuro. */
+    background-color: var(--rf-black);
+    background-image: linear-gradient(
+            rgba(0, 0, 0, 0.72),
+            rgba(0, 0, 0, 0.72)
+        ),
+        url("/RegistroFIT-main/images/gymbg1.jpg");
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    color: var(--rf-text);
+}
+
+body.page-enter {
+    /* Estado inicial invisível antes do fade-in. */
+    opacity: 0;
+}
+
+body.page-enter.page-enter-active {
+    opacity: 1;
+    transition: opacity 260ms ease;
+}
+
+body.page-leave {
+    /* Fade-out aplicado ao sair para outra página interna. */
+    opacity: 0;
+    transition: opacity 260ms ease;
+}
+
+/* Keep logo sizing clean without forced background */
+img[src$="2307827.png"] {
+    background-color: transparent;
+    border: 2px solid var(--rf-red);
+    padding: 0;
+    border-radius: 10px;
+}
+
+header,
+.footer,
+.bg-dark,
+.text-bg-dark {
+    /* Uniformiza áreas estruturais para manter consistência visual. */
+    background-color: #000000 !important;
+    color: var(--rf-text) !important;
+    border-bottom: 1px solid rgba(200, 16, 46, 0.35);
+}
+
+.footer {
+    border-top: 1px solid rgba(200, 16, 46, 0.35);
+    border-bottom: 0;
+}
+
+.nav-link {
+    color: var(--rf-text) !important;
+}
+
+.nav-link.active,
+.nav-pills .nav-link.active {
+    background-color: var(--rf-red) !important;
+    color: #ffffff !important;
+}
+
+.link-secondary {
+    color: #ff7a8f !important;
+}
+
+a,
+.text-danger {
+    color: #ff546f !important;
+}
+
+.text-muted,
+.text-white-50 {
+    color: var(--rf-muted) !important;
+}
+
+.btn-primary,
+.btn-success,
+.btn-warning {
+    /* Botões de ação principal com a cor de destaque da marca. */
+    background-color: var(--rf-red) !important;
+    border-color: var(--rf-red) !important;
+    color: #ffffff !important;
+}
+
+.btn-primary:hover,
+.btn-success:hover,
+.btn-warning:hover {
+    background-color: var(--rf-red-hover) !important;
+    border-color: var(--rf-red-hover) !important;
+}
+
+.btn-outline-light,
+.btn-outline-success {
+    border-color: var(--rf-red) !important;
+    color: #ff8ea0 !important;
+}
+
+.btn-outline-light:hover,
+.btn-outline-success:hover {
+    background-color: var(--rf-red) !important;
+    color: #ffffff !important;
+}
+
+.btn-secondary {
+    background-color: #262626 !important;
+    border-color: #3b3b3b !important;
+}
+
+.btn-outline-danger {
+    border-color: #ff546f !important;
+    color: #ff8ea0 !important;
+}
+
+.btn-outline-danger:hover {
+    background-color: #ff546f !important;
+    color: #ffffff !important;
+}
+
+.card,
+.modal-content {
+    /* Cartões e modais usam contraste suave para leitura confortável. */
+    background-color: var(--rf-black-soft);
+    color: var(--rf-text);
+    border: 1px solid rgba(200, 16, 46, 0.45);
+}
+
+.form-control,
+.form-select {
+    background-color: #1b1b1b;
+    color: var(--rf-text);
+    border: 1px solid #404040;
+}
+
+.form-control:focus,
+.form-select:focus {
+    background-color: #1b1b1b;
+    color: var(--rf-text);
+    border-color: var(--rf-red);
+    box-shadow: 0 0 0 0.2rem rgba(200, 16, 46, 0.2);
+}
+
+.form-floating > label,
+.form-label,
+.form-text {
+    color: var(--rf-muted) !important;
+}
+
+.table {
+    /* Tabelas adaptadas ao tema escuro sem perder legibilidade. */
+    --bs-table-bg: transparent;
+    --bs-table-color: var(--rf-text);
+    --bs-table-striped-bg: #171717;
+    --bs-table-striped-color: var(--rf-text);
+}
+
+.table > :not(caption) > * > * {
+    border-bottom-color: #2c2c2c;
+}
+
+.dropdown-menu {
+    background-color: #141414;
+    border: 1px solid rgba(200, 16, 46, 0.35);
+}
+
+.dropdown-item {
+    color: var(--rf-text);
+}
+
+.dropdown-item:hover {
+    background-color: #1f1f1f;
+}
+
+.icon-square {
+    width: 3rem;
+    height: 3rem;
+    border-radius: 0.75rem;
+    background-color: var(--rf-red);
+}
+
+/* Make Bootstrap close (X) buttons white on dark backgrounds */
+.btn-close {
+    /* Inverte o ícone para ficar visível em fundos escuros. */
+    filter: invert(1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    body.page-enter.page-enter-active,
+    body.page-leave {
+        transition: none;
+    }
+}
