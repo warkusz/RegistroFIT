@@ -94,9 +94,7 @@ O foco do projeto e oferecer uma interface simples, rapida e organizada para o u
 
 ## Melhorias futuras
 
-- Edicao de exercicios ja registados
 - Filtros e pesquisa no historico
-- Dashboard com graficos de progresso
 - Internacionalizacao (PT/EN)
 
 ## Autor
