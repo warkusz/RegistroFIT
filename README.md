@@ -69,16 +69,76 @@ O foco do projeto e oferecer uma interface simples, rapida e organizada para o u
 
 ## Como correr localmente
 
-1. Clonar ou descarregar este repositorio.
-2. Colocar a pasta do projeto em:
-   - `C:\xampp\htdocs\RegistroFIT-main`
-3. Iniciar no XAMPP:
-   - **Apache**
-   - **MySQL**
-4. Criar/importar a base de dados e configurar a ligacao no ficheiro:
-   - `conexao.php`
-5. Abrir no navegador:
-   - `http://localhost/RegistroFIT-main/index.html`
+1) PRE-REQUISITOS
+- Windows
+- XAMPP instalado (Apache + MySQL + phpMyAdmin)
+- Navegador (Chrome/Edge)
+2) COLOCAR O PROJETO NA PASTA CERTA
+- Copiar a pasta do projeto para:
+  C:\xampp\htdocs\PAP-WorkoutPlanner-main
+3) INICIAR SERVICOS NO XAMPP
+- Abrir “XAMPP Control Panel”
+- Clicar Start em:
+  - Apache
+  - MySQL
+- Confirmar que ambos ficam com luz verde
+4) CRIAR BASE DE DADOS E UTILIZADOR (phpMyAdmin)
+- Abrir no browser:
+  http://localhost/phpmyadmin
+- Ir ao separador SQL e executar ESTE BLOCO:
+CREATE DATABASE IF NOT EXISTS papdb
+  CHARACTER SET utf8mb4
+  COLLATE utf8mb4_general_ci;
+CREATE USER IF NOT EXISTS 'papuser'@'localhost' IDENTIFIED BY 'pap123';
+GRANT ALL PRIVILEGES ON papdb.* TO 'papuser'@'localhost';
+FLUSH PRIVILEGES;
+USE papdb;
+CREATE TABLE IF NOT EXISTS utilizadores (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  nome VARCHAR(120) NOT NULL,
+  email VARCHAR(160) NOT NULL UNIQUE,
+  senha VARCHAR(255) NOT NULL,
+  foto_perfil VARCHAR(255) DEFAULT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+5) NOTA IMPORTANTE SOBRE AS OUTRAS TABELAS
+- As tabelas seguintes sao criadas automaticamente pela aplicacao quando o utilizador entra nas paginas:
+  - workout_days
+  - workout_exercises
+  - workout_calendar_entries
+  - user_measurements
+- Ou seja, basta a tabela “utilizadores” existir para arrancar normalmente.
+6) VERIFICAR FICHEIRO DE CONEXAO (SE NECESSARIO)
+- Abrir:
+  C:\xampp\htdocs\PAP-WorkoutPlanner-main\conexao.php
+- Confirmar que esta assim:
+  host = localhost
+  user = papuser
+  pass = pap123
+  db   = papdb
+- Se no computador do juri a password/user forem diferentes, alterar aqui.
+7) ABRIR O PROJETO
+- URL inicial:
+  http://localhost/PAP-WorkoutPlanner-main/index.html
+- Registar conta:
+  http://localhost/PAP-WorkoutPlanner-main/register.php
+- Login:
+  http://localhost/PAP-WorkoutPlanner-main/login.php
+8) PERMISSOES PARA FOTO DE PERFIL (IMPORTANTE)
+- A aplicacao guarda fotos em:
+  C:\xampp\htdocs\PAP-WorkoutPlanner-main\uploads\profile_photos
+- Se der erro de upload, criar manualmente esta pasta e garantir permissao de escrita.
+9) CHECKLIST RAPIDO (SE NAO ABRIR)
+- Apache ligado? MySQL ligado?
+- Projeto dentro de C:\xampp\htdocs\ ?
+- Base de dados papdb criada?
+- Utilizador papuser/pap123 criado e com privilegios?
+- Tabela utilizadores criada?
+- conexao.php com credenciais corretas?
+10) CREDENCIAIS DE TESTE
+- Criar conta nova em /register.php
+- Fazer login com essa conta em /login.php
+- O sistema redireciona para main.php e permite usar Treinos, Calendario e Perfil.
 
 ## Estrutura principal
 
