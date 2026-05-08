@@ -95,9 +95,9 @@ if ($userDayUniqueIndex instanceof mysqli_result) {
 // Catálogo de exemplos pré-definidos para popular rapidamente o plano de treino.
 $exampleTemplates = [
     'leg-day' => [
-        'day_name' => ' Leg Day',
+        'day_name' => ' Pernas',
         'exercises' => [
-            ['nome' => 'Agachamento livre (bodyweight)', 'sets' => 3, 'reps' => 12],
+            ['nome' => 'Agachamento livre (Peso Corporal)', 'sets' => 3, 'reps' => 12],
             ['nome' => 'Leg press (maquina)', 'sets' => 3, 'reps' => 10],
             ['nome' => 'Cadeira extensora', 'sets' => 3, 'reps' => 12],
             ['nome' => 'Mesa flexora', 'sets' => 3, 'reps' => 12],
@@ -108,7 +108,7 @@ $exampleTemplates = [
         'day_name' => ' Peito + Triceps',
         'exercises' => [
             ['nome' => 'Supino com halteres', 'sets' => 3, 'reps' => 10],
-            ['nome' => 'Flexoes (push-ups)', 'sets' => 3, 'reps' => 12],
+            ['nome' => 'Flexoes ', 'sets' => 3, 'reps' => 12],
             ['nome' => 'Crucifixo com halteres', 'sets' => 3, 'reps' => 12],
             ['nome' => 'Triceps na polia (corda)', 'sets' => 3, 'reps' => 12],
             ['nome' => 'Extensao de triceps (halter)', 'sets' => 3, 'reps' => 12]
