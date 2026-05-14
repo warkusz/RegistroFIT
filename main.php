@@ -1,12 +1,4 @@
 <?php
-// -----------------------------------------------------------------------------
-// main.php (Treinos)
-// Página principal autenticada onde o utilizador:
-// 1) cria dias de treino,
-// 2) adiciona/edita/remove exercícios,
-// 3) importa exemplos prontos.
-// -----------------------------------------------------------------------------
-// Valida a sessão: sem login, o utilizador volta para o ecrã de autenticação.
 session_start();
 
 if (!isset($_SESSION['id']) || (int)$_SESSION['id'] < 1) {
@@ -26,55 +18,80 @@ $userId = (int)$_SESSION['id'];
 $userDisplayName = trim($_SESSION['nome'] ?? '') !== '' ? $_SESSION['nome'] : 'Utilizador';
 $userProfilePhoto = trim($_SESSION['foto_perfil'] ?? '') !== '' ? $_SESSION['foto_perfil'] : 'https://github.com/mdo.png';
 
-$createDaysTableSql = "CREATE TABLE IF NOT EXISTS workout_days (
+$conn->query("CREATE TABLE IF NOT EXISTS workout_days (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
     day_name VARCHAR(120) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
-$conn->query($createDaysTableSql);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 
-// Garante que a tabela de exercícios existe antes de qualquer operação de escrita.
-$createExercisesTableSql = "CREATE TABLE IF NOT EXISTS workout_exercises (
+$conn->query("CREATE TABLE IF NOT EXISTS workout_exercises (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
     workout_day_id INT NOT NULL,
+    exercise_type VARCHAR(20) NOT NULL DEFAULT 'exercicio',
     nome_exercicio VARCHAR(120) NOT NULL,
-    reps INT NOT NULL,
-    num_sets INT NOT NULL,
-    kg DECIMAL(7,2) NOT NULL,
+    reps VARCHAR(50) NOT NULL DEFAULT '',
+    num_sets INT NOT NULL DEFAULT 0,
+    kg DECIMAL(7,2) NULL,
+    tempo_minutos INT NULL,
+    distancia_metros INT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_workout_day
         FOREIGN KEY (workout_day_id) REFERENCES workout_days(id)
         ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
-$conn->query($createExercisesTableSql);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 
-$checkExercisesKgColumn = $conn->query("SHOW COLUMNS FROM workout_exercises LIKE 'kg'");
-if ($checkExercisesKgColumn instanceof mysqli_result) {
-    $kgColumn = $checkExercisesKgColumn->fetch_assoc();
-    $checkExercisesKgColumn->free();
+// Migra reps de INT para VARCHAR se necessário
+$checkRepsType = $conn->query("SHOW COLUMNS FROM workout_exercises LIKE 'reps'");
+if ($checkRepsType instanceof mysqli_result) {
+    $repsCol = $checkRepsType->fetch_assoc();
+    $checkRepsType->free();
+    if ($repsCol && stripos((string)($repsCol['Type'] ?? ''), 'varchar') === false) {
+        $conn->query("ALTER TABLE workout_exercises MODIFY COLUMN reps VARCHAR(50) NOT NULL DEFAULT ''");
+    }
+}
+
+// Garante que kg permite NULL
+$checkKgColumn = $conn->query("SHOW COLUMNS FROM workout_exercises LIKE 'kg'");
+if ($checkKgColumn instanceof mysqli_result) {
+    $kgColumn = $checkKgColumn->fetch_assoc();
+    $checkKgColumn->free();
     if ($kgColumn && strtoupper((string)($kgColumn['Null'] ?? 'NO')) !== 'YES') {
         $conn->query("ALTER TABLE workout_exercises MODIFY COLUMN kg DECIMAL(7,2) NULL");
     }
 }
 
+// Adiciona colunas novas se não existirem
+foreach ([
+    "exercise_type" => "ALTER TABLE workout_exercises ADD COLUMN exercise_type VARCHAR(20) NOT NULL DEFAULT 'exercicio' AFTER workout_day_id",
+    "tempo_minutos" => "ALTER TABLE workout_exercises ADD COLUMN tempo_minutos INT NULL",
+    "distancia_metros" => "ALTER TABLE workout_exercises ADD COLUMN distancia_metros INT NULL",
+] as $col => $alterSql) {
+    $check = $conn->query("SHOW COLUMNS FROM workout_exercises LIKE '$col'");
+    if ($check instanceof mysqli_result) {
+        if ($check->num_rows === 0) {
+            $conn->query($alterSql);
+        }
+        $check->free();
+    }
+}
+
+// Garante user_id nas tabelas
 $checkDaysUserId = $conn->query("SHOW COLUMNS FROM workout_days LIKE 'user_id'");
 if ($checkDaysUserId instanceof mysqli_result) {
-    $hasDaysUserId = $checkDaysUserId->num_rows > 0;
-    $checkDaysUserId->free();
-    if (!$hasDaysUserId) {
+    if ($checkDaysUserId->num_rows === 0) {
         $conn->query("ALTER TABLE workout_days ADD COLUMN user_id INT NOT NULL DEFAULT 0 AFTER id");
     }
+    $checkDaysUserId->free();
 }
 
 $checkExercisesUserId = $conn->query("SHOW COLUMNS FROM workout_exercises LIKE 'user_id'");
 if ($checkExercisesUserId instanceof mysqli_result) {
-    $hasExercisesUserId = $checkExercisesUserId->num_rows > 0;
-    $checkExercisesUserId->free();
-    if (!$hasExercisesUserId) {
+    if ($checkExercisesUserId->num_rows === 0) {
         $conn->query("ALTER TABLE workout_exercises ADD COLUMN user_id INT NOT NULL DEFAULT 0 AFTER id");
     }
+    $checkExercisesUserId->free();
 }
 
 $dayNameUniqueIndex = $conn->query("SHOW INDEX FROM workout_days WHERE Key_name = 'day_name'");
@@ -92,65 +109,62 @@ if ($userDayUniqueIndex instanceof mysqli_result) {
     $userDayUniqueIndex->free();
 }
 
-// Catálogo de exemplos pré-definidos para popular rapidamente o plano de treino.
 $exampleTemplates = [
     'leg-day' => [
         'day_name' => ' Leg Day',
         'exercises' => [
-            ['nome' => 'Agachamento livre (bodyweight)', 'sets' => 3, 'reps' => 12],
-            ['nome' => 'Leg press (maquina)', 'sets' => 3, 'reps' => 10],
-            ['nome' => 'Cadeira extensora', 'sets' => 3, 'reps' => 12],
-            ['nome' => 'Mesa flexora', 'sets' => 3, 'reps' => 12],
-            ['nome' => 'Gemeos em pe (leg press)', 'sets' => 3, 'reps' => 15]
+            ['nome' => 'Agachamento livre (bodyweight)', 'sets' => 3, 'reps' => '12'],
+            ['nome' => 'Leg press (maquina)', 'sets' => 3, 'reps' => '10'],
+            ['nome' => 'Cadeira extensora', 'sets' => 3, 'reps' => '12'],
+            ['nome' => 'Mesa flexora', 'sets' => 3, 'reps' => '12'],
+            ['nome' => 'Gemeos em pe (leg press)', 'sets' => 3, 'reps' => '15']
         ]
     ],
     'peito-triceps' => [
         'day_name' => ' Peito + Triceps',
         'exercises' => [
-            ['nome' => 'Supino com halteres', 'sets' => 3, 'reps' => 10],
-            ['nome' => 'Flexoes (push-ups)', 'sets' => 3, 'reps' => 12],
-            ['nome' => 'Crucifixo com halteres', 'sets' => 3, 'reps' => 12],
-            ['nome' => 'Triceps na polia (corda)', 'sets' => 3, 'reps' => 12],
-            ['nome' => 'Extensao de triceps (halter)', 'sets' => 3, 'reps' => 12]
+            ['nome' => 'Supino com halteres', 'sets' => 3, 'reps' => '10'],
+            ['nome' => 'Flexoes (push-ups)', 'sets' => 3, 'reps' => '12'],
+            ['nome' => 'Crucifixo com halteres', 'sets' => 3, 'reps' => '12'],
+            ['nome' => 'Triceps na polia (corda)', 'sets' => 3, 'reps' => '12'],
+            ['nome' => 'Extensao de triceps (halter)', 'sets' => 3, 'reps' => '12']
         ]
     ],
     'costas-biceps' => [
         'day_name' => ' Costas + Biceps',
         'exercises' => [
-            ['nome' => 'Remada na polia baixa', 'sets' => 3, 'reps' => 10],
-            ['nome' => 'Lat pulldown (polia alta)', 'sets' => 3, 'reps' => 10],
-            ['nome' => 'Remada com halter (unilateral)', 'sets' => 3, 'reps' => 10],
-            ['nome' => 'Rosca direta com halteres', 'sets' => 3, 'reps' => 12],
-            ['nome' => 'Rosca martelo', 'sets' => 3, 'reps' => 12]
+            ['nome' => 'Remada na polia baixa', 'sets' => 3, 'reps' => '10'],
+            ['nome' => 'Lat pulldown (polia alta)', 'sets' => 3, 'reps' => '10'],
+            ['nome' => 'Remada com halter (unilateral)', 'sets' => 3, 'reps' => '10'],
+            ['nome' => 'Rosca direta com halteres', 'sets' => 3, 'reps' => '12'],
+            ['nome' => 'Rosca martelo', 'sets' => 3, 'reps' => '12']
         ]
     ],
     'core' => [
         'day_name' => 'Core',
         'exercises' => [
-            ['nome' => 'Prancha (plank) - seg', 'sets' => 3, 'reps' => 45],
-            ['nome' => 'Crunch no banco', 'sets' => 3, 'reps' => 15],
-            ['nome' => 'Elevacao de pernas (deitado)', 'sets' => 3, 'reps' => 12],
-            ['nome' => 'Russian twist (sem peso) - total', 'sets' => 3, 'reps' => 20],
-            ['nome' => 'Prancha lateral (cada lado) - seg', 'sets' => 2, 'reps' => 25]
+            ['nome' => 'Prancha (plank) - seg', 'sets' => 3, 'reps' => '45'],
+            ['nome' => 'Crunch no banco', 'sets' => 3, 'reps' => '15'],
+            ['nome' => 'Elevacao de pernas (deitado)', 'sets' => 3, 'reps' => '12'],
+            ['nome' => 'Russian twist (sem peso) - total', 'sets' => 3, 'reps' => '20'],
+            ['nome' => 'Prancha lateral (cada lado) - seg', 'sets' => 2, 'reps' => '25']
         ]
     ],
     'ombros-bracos' => [
         'day_name' => 'Ombros + Bracos',
         'exercises' => [
-            ['nome' => 'Press de ombros com halteres', 'sets' => 3, 'reps' => 10],
-            ['nome' => 'Elevacao lateral', 'sets' => 3, 'reps' => 12],
-            ['nome' => 'Elevacao frontal', 'sets' => 3, 'reps' => 12],
-            ['nome' => 'Rosca 21s (biceps)', 'sets' => 2, 'reps' => 21],
-            ['nome' => 'Triceps banco (bench dip)', 'sets' => 3, 'reps' => 10]
+            ['nome' => 'Press de ombros com halteres', 'sets' => 3, 'reps' => '10'],
+            ['nome' => 'Elevacao lateral', 'sets' => 3, 'reps' => '12'],
+            ['nome' => 'Elevacao frontal', 'sets' => 3, 'reps' => '12'],
+            ['nome' => 'Rosca 21s (biceps)', 'sets' => 2, 'reps' => '21'],
+            ['nome' => 'Triceps banco (bench dip)', 'sets' => 3, 'reps' => '10']
         ]
     ]
 ];
 
 
 if (isset($_POST['btn-create-day'])) {
-    // Criação de um "dia de treino" (ex: Push/Pull/Legs) associado ao utilizador atual.
     $dayName = trim($_POST['day_name'] ?? '');
-
     if ($dayName === '') {
         $erro = 'Escreve o nome do dia de treino.';
     } else {
@@ -171,20 +185,35 @@ if (isset($_POST['btn-create-day'])) {
 }
 
 if (isset($_POST['btn-guardar-workout'])) {
-    // Guarda um exercício dentro de um dia já criado pelo mesmo utilizador.
     $workoutDayId = (int)($_POST['workout_day_id'] ?? 0);
     $nomeExercicio = trim($_POST['nome_exercicio'] ?? '');
-    $reps = (int)($_POST['reps'] ?? 0);
-    $numSets = (int)($_POST['num_sets'] ?? 0);
-    $kgInput = trim((string)($_POST['kg'] ?? ''));
+    $exerciseType = in_array($_POST['exercise_type'] ?? '', ['exercicio', 'corrida']) ? $_POST['exercise_type'] : 'exercicio';
+
+    $reps = '';
+    $numSets = 0;
     $kg = null;
-    if ($kgInput !== '') {
-        $kg = (float)$kgInput;
+    $tempoMinutos = null;
+    $distanciaMetros = null;
+
+    if ($exerciseType === 'corrida') {
+        $tempoMinutos = (int)($_POST['tempo_minutos'] ?? 0);
+        $distanciaMetros = (int)($_POST['distancia_metros'] ?? 0);
+        if ($workoutDayId < 1 || $nomeExercicio === '' || $tempoMinutos < 1 || $distanciaMetros < 1) {
+            $erro = 'Preenche os campos corretamente antes de guardar.';
+        }
+    } else {
+        $reps = trim($_POST['reps'] ?? '');
+        $numSets = (int)($_POST['num_sets'] ?? 0);
+        $kgInput = trim((string)($_POST['kg'] ?? ''));
+        if ($kgInput !== '') {
+            $kg = (float)$kgInput;
+        }
+        if ($workoutDayId < 1 || $nomeExercicio === '' || $reps === '' || $numSets < 1 || ($kg !== null && $kg < 0)) {
+            $erro = 'Preenche os campos corretamente antes de guardar.';
+        }
     }
 
-    if ($workoutDayId < 1 || $nomeExercicio === '' || $reps < 1 || $numSets < 1 || ($kg !== null && $kg < 0)) {
-        $erro = 'Preenche os campos corretamente antes de guardar.';
-    } else {
+    if ($erro === '') {
         $stmtCheckDayOwner = $conn->prepare("SELECT id FROM workout_days WHERE id = ? AND user_id = ? LIMIT 1");
         if ($stmtCheckDayOwner) {
             $stmtCheckDayOwner->bind_param("ii", $workoutDayId, $userId);
@@ -196,9 +225,9 @@ if (isset($_POST['btn-guardar-workout'])) {
             if (!$dayExistsForUser) {
                 $erro = 'Dia de treino invalido para este utilizador.';
             } else {
-                $stmtInsert = $conn->prepare("INSERT INTO workout_exercises (user_id, workout_day_id, nome_exercicio, reps, num_sets, kg) VALUES (?, ?, ?, ?, ?, ?)");
+                $stmtInsert = $conn->prepare("INSERT INTO workout_exercises (user_id, workout_day_id, exercise_type, nome_exercicio, reps, num_sets, kg, tempo_minutos, distancia_metros) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
                 if ($stmtInsert) {
-                    $stmtInsert->bind_param("iisiid", $userId, $workoutDayId, $nomeExercicio, $reps, $numSets, $kg);
+                    $stmtInsert->bind_param("iisssidii", $userId, $workoutDayId, $exerciseType, $nomeExercicio, $reps, $numSets, $kg, $tempoMinutos, $distanciaMetros);
                     if ($stmtInsert->execute()) {
                         $stmtInsert->close();
                         header('Location: main.php?saved=1');
@@ -217,7 +246,6 @@ if (isset($_POST['btn-guardar-workout'])) {
 }
 
 if (isset($_POST['btn-add-example-template'])) {
-    // Importa um "template" completo (dia + exercícios) para o utilizador atual.
     $templateKey = trim((string)($_POST['template_key'] ?? ''));
     if ($templateKey === '' || !isset($exampleTemplates[$templateKey])) {
         $erro = 'Modelo de treino invalido.';
@@ -272,17 +300,21 @@ if (isset($_POST['btn-add-example-template'])) {
                     $stmtCreateTemplateDay->close();
                 }
 
-                $stmtInsertTemplateExercise = $conn->prepare("INSERT INTO workout_exercises (user_id, workout_day_id, nome_exercicio, reps, num_sets, kg) VALUES (?, ?, ?, ?, ?, ?)");
+                $stmtInsertTemplateExercise = $conn->prepare("INSERT INTO workout_exercises (user_id, workout_day_id, exercise_type, nome_exercicio, reps, num_sets, kg, tempo_minutos, distancia_metros) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
                 if (!$stmtInsertTemplateExercise) {
                     throw new Exception('Erro ao preparar exercicios de exemplo.');
                 }
 
+                $exampleType = 'exercicio';
+                $exampleKg = null;
+                $exampleTempo = null;
+                $exampleDist = null;
+
                 foreach ($templateExercises as $templateExercise) {
                     $exerciseName = (string)$templateExercise['nome'];
-                    $exerciseReps = (int)$templateExercise['reps'];
+                    $exerciseReps = (string)$templateExercise['reps'];
                     $exerciseSets = (int)$templateExercise['sets'];
-                    $exampleKg = null;
-                    $stmtInsertTemplateExercise->bind_param("iisiid", $userId, $dayIdToUse, $exerciseName, $exerciseReps, $exerciseSets, $exampleKg);
+                    $stmtInsertTemplateExercise->bind_param("iisssidii", $userId, $dayIdToUse, $exampleType, $exerciseName, $exerciseReps, $exerciseSets, $exampleKg, $exampleTempo, $exampleDist);
                     if (!$stmtInsertTemplateExercise->execute()) {
                         throw new Exception('Nao foi possivel inserir exercicios de exemplo.');
                     }
@@ -300,46 +332,48 @@ if (isset($_POST['btn-add-example-template'])) {
 }
 
 if (isset($_POST['btn-update-exercise'])) {
-    // Atualiza exercício existente sem precisar remover.
     $exerciseId = (int)($_POST['exercise_id'] ?? 0);
     $nomeExercicio = trim((string)($_POST['nome_exercicio'] ?? ''));
-    $reps = (int)($_POST['reps'] ?? 0);
-    $numSets = (int)($_POST['num_sets'] ?? 0);
-    $kgInput = trim((string)($_POST['kg'] ?? ''));
+    $exerciseType = in_array($_POST['exercise_type'] ?? '', ['exercicio', 'corrida']) ? $_POST['exercise_type'] : 'exercicio';
+
+    $reps = '';
+    $numSets = 0;
     $kg = null;
-    if ($kgInput !== '') {
-        $kg = (float)$kgInput;
+    $tempoMinutos = null;
+    $distanciaMetros = null;
+
+    if ($exerciseType === 'corrida') {
+        $tempoMinutos = (int)($_POST['tempo_minutos'] ?? 0);
+        $distanciaMetros = (int)($_POST['distancia_metros'] ?? 0);
+        if ($exerciseId < 1 || $nomeExercicio === '' || $tempoMinutos < 1 || $distanciaMetros < 1) {
+            $erro = 'Preenche os campos corretamente antes de editar.';
+        }
+    } else {
+        $reps = trim((string)($_POST['reps'] ?? ''));
+        $numSets = (int)($_POST['num_sets'] ?? 0);
+        $kgInput = trim((string)($_POST['kg'] ?? ''));
+        if ($kgInput !== '') {
+            $kg = (float)$kgInput;
+        }
+        if ($exerciseId < 1 || $nomeExercicio === '' || $reps === '' || $numSets < 1 || ($kg !== null && $kg < 0)) {
+            $erro = 'Preenche os campos corretamente antes de editar.';
+        }
     }
 
-    if ($exerciseId < 1 || $nomeExercicio === '' || $reps < 1 || $numSets < 1 || ($kg !== null && $kg < 0)) {
-        $erro = 'Preenche os campos corretamente antes de editar.';
-    } else {
-        if ($kg === null) {
-            $stmtUpdateExercise = $conn->prepare("UPDATE workout_exercises SET nome_exercicio = ?, reps = ?, num_sets = ?, kg = NULL WHERE id = ? AND user_id = ?");
-            if ($stmtUpdateExercise) {
-                $stmtUpdateExercise->bind_param("siiii", $nomeExercicio, $reps, $numSets, $exerciseId, $userId);
-                $stmtUpdateExercise->execute();
-                $stmtUpdateExercise->close();
-                header('Location: main.php?updated=1');
-                exit;
-            }
-            $erro = 'Erro ao preparar edicao do exercicio.';
-        } else {
-            $stmtUpdateExercise = $conn->prepare("UPDATE workout_exercises SET nome_exercicio = ?, reps = ?, num_sets = ?, kg = ? WHERE id = ? AND user_id = ?");
-            if ($stmtUpdateExercise) {
-                $stmtUpdateExercise->bind_param("siidii", $nomeExercicio, $reps, $numSets, $kg, $exerciseId, $userId);
-                $stmtUpdateExercise->execute();
-                $stmtUpdateExercise->close();
-                header('Location: main.php?updated=1');
-                exit;
-            }
-            $erro = 'Erro ao preparar edicao do exercicio.';
+    if ($erro === '') {
+        $stmtUpdateExercise = $conn->prepare("UPDATE workout_exercises SET exercise_type = ?, nome_exercicio = ?, reps = ?, num_sets = ?, kg = ?, tempo_minutos = ?, distancia_metros = ? WHERE id = ? AND user_id = ?");
+        if ($stmtUpdateExercise) {
+            $stmtUpdateExercise->bind_param("sssidiiii", $exerciseType, $nomeExercicio, $reps, $numSets, $kg, $tempoMinutos, $distanciaMetros, $exerciseId, $userId);
+            $stmtUpdateExercise->execute();
+            $stmtUpdateExercise->close();
+            header('Location: main.php?updated=1');
+            exit;
         }
+        $erro = 'Erro ao preparar edicao do exercicio.';
     }
 }
 
 if (isset($_POST['btn-delete-exercise'])) {
-    // Remove apenas exercícios que pertencem ao utilizador autenticado.
     $exerciseId = (int)($_POST['exercise_id'] ?? 0);
     if ($exerciseId > 0) {
         $stmtDeleteExercise = $conn->prepare("DELETE FROM workout_exercises WHERE id = ? AND user_id = ?");
@@ -354,7 +388,6 @@ if (isset($_POST['btn-delete-exercise'])) {
 }
 
 if (isset($_POST['btn-delete-day'])) {
-    // Apaga o dia e, por cascata da FK, todos os exercícios desse dia.
     $dayId = (int)($_POST['day_id'] ?? 0);
     if ($dayId > 0) {
         $stmtDeleteDay = $conn->prepare("DELETE FROM workout_days WHERE id = ? AND user_id = ?");
@@ -371,7 +404,6 @@ if (isset($_POST['btn-delete-day'])) {
 
 $dayOptions = [];
 $daysData = [];
-// Monta a estrutura base para renderizar os cartões/tabelas por dia de treino.
 $daysResultStmt = $conn->prepare("SELECT id, day_name FROM workout_days WHERE user_id = ? ORDER BY created_at DESC, id DESC");
 if ($daysResultStmt) {
     $daysResultStmt->bind_param("i", $userId);
@@ -389,7 +421,7 @@ if ($daysResultStmt) {
     $daysResultStmt->close();
 }
 
-$exercisesResultStmt = $conn->prepare("SELECT id, workout_day_id, nome_exercicio, reps, num_sets, kg FROM workout_exercises WHERE user_id = ? ORDER BY created_at DESC, id DESC");
+$exercisesResultStmt = $conn->prepare("SELECT id, workout_day_id, exercise_type, nome_exercicio, reps, num_sets, kg, tempo_minutos, distancia_metros FROM workout_exercises WHERE user_id = ? ORDER BY created_at DESC, id DESC");
 if ($exercisesResultStmt) {
     $exercisesResultStmt->bind_param("i", $userId);
     $exercisesResultStmt->execute();
@@ -418,7 +450,6 @@ if ($exercisesResultStmt) {
 
 <body>
     <main class="d-flex flex-nowrap vh-100">
-        <!-- Sidebar de navegação da área autenticada -->
         <div class="d-flex flex-column flex-shrink-0 p-3 text-bg-dark" style="width: 280px;">
             <a href="index.html" class="d-flex align-items-center mb-3 mb-md-0 me-md-auto text-white text-decoration-none">
                 <svg class="bi pe-none" width="40" height="32"></svg>
@@ -432,7 +463,7 @@ if ($exercisesResultStmt) {
                 <span class="fs-4">RegistoFIT</span>
             </a>
             <hr>
-            
+
             <ul class="nav nav-pills flex-column mb-auto">
                 <li class="nav-item">
                     <a href="main.php" class="nav-link active" aria-current="page">
@@ -453,9 +484,9 @@ if ($exercisesResultStmt) {
                     </a>
                 </li>
             </ul>
-            
+
             <hr>
-            
+
             <div class="dropdown">
                 <a href="#" class="d-flex align-items-center text-white text-decoration-none dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
                     <img src="<?php echo htmlspecialchars($userProfilePhoto); ?>" alt="Foto de perfil" width="32" height="32" class="rounded-circle me-2">
@@ -469,18 +500,17 @@ if ($exercisesResultStmt) {
 
         <div class="flex-grow-1 p-4 overflow-y-auto ">
             <section id="workouts-section">
-            <!-- Zona principal: resumo e gestão do plano de treino -->
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <div>
                     <h1 class="h3 mb-1 text-white">Plano de Treino</h1>
-                    <p class="text-white mb-0">Cria um dia (ex: Leg Day), adiciona quantos exercicios quiseres e remove quando precisares.</p>
+                    <p class="text-white mb-0">Cria um dia (ex: Leg Day), adiciona exercicios ou corridas e remove quando precisares.</p>
                 </div>
                 <div class="d-flex gap-2">
                     <button type="button" class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#addDayModal">
                         Criar dia
                     </button>
                     <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addWorkoutModal">
-                        Adicionar exercicio
+                        Adicionar
                     </button>
                     <button type="button" class="btn btn-outline-light" data-bs-toggle="modal" data-bs-target="#exampleTemplatesModal">
                         Exemplos
@@ -491,39 +521,25 @@ if ($exercisesResultStmt) {
             <div class="card shadow-sm">
                 <div class="card-body">
                     <?php if (isset($_GET['saved'])): ?>
-                        <div class="alert alert-success" role="alert">
-                            Exercicio guardado com sucesso.
-                        </div>
+                        <div class="alert alert-success" role="alert">Exercicio guardado com sucesso.</div>
                     <?php endif; ?>
                     <?php if (isset($_GET['day_saved'])): ?>
-                        <div class="alert alert-success" role="alert">
-                            Dia de treino criado com sucesso.
-                        </div>
+                        <div class="alert alert-success" role="alert">Dia de treino criado com sucesso.</div>
                     <?php endif; ?>
                     <?php if (isset($_GET['deleted'])): ?>
-                        <div class="alert alert-success" role="alert">
-                            Exercicio removido.
-                        </div>
+                        <div class="alert alert-success" role="alert">Exercicio removido.</div>
                     <?php endif; ?>
                     <?php if (isset($_GET['updated'])): ?>
-                        <div class="alert alert-success" role="alert">
-                            Exercicio atualizado com sucesso.
-                        </div>
+                        <div class="alert alert-success" role="alert">Exercicio atualizado com sucesso.</div>
                     <?php endif; ?>
                     <?php if (isset($_GET['day_deleted'])): ?>
-                        <div class="alert alert-success" role="alert">
-                            Dia e exercicios removidos.
-                        </div>
+                        <div class="alert alert-success" role="alert">Dia e exercicios removidos.</div>
                     <?php endif; ?>
                     <?php if (isset($_GET['examples_saved'])): ?>
-                        <div class="alert alert-success" role="alert">
-                            Exemplo adicionado ao teu plano.
-                        </div>
+                        <div class="alert alert-success" role="alert">Exemplo adicionado ao teu plano.</div>
                     <?php endif; ?>
                     <?php if ($erro !== ''): ?>
-                        <div class="alert alert-danger" role="alert">
-                            <?php echo htmlspecialchars($erro); ?>
-                        </div>
+                        <div class="alert alert-danger" role="alert"><?php echo htmlspecialchars($erro); ?></div>
                     <?php endif; ?>
                     <?php if (count($daysData) > 0): ?>
                         <?php foreach ($daysData as $dayData): ?>
@@ -540,8 +556,9 @@ if ($exercisesResultStmt) {
                                         <thead>
                                             <tr>
                                                 <th>Nome</th>
-                                                <th>Reps</th>
-                                                <th>Sets</th>
+                                                <th>Tipo</th>
+                                                <th>Reps / Tempo (min)</th>
+                                                <th>Sets / Dist (m)</th>
                                                 <th>Kg</th>
                                                 <th class="text-end">Acao</th>
                                             </tr>
@@ -549,11 +566,40 @@ if ($exercisesResultStmt) {
                                         <tbody>
                                             <?php if (count($dayData['exercises']) > 0): ?>
                                                 <?php foreach ($dayData['exercises'] as $workout): ?>
+                                                    <?php
+                                                        $wType = $workout['exercise_type'] ?? 'exercicio';
+                                                        $isCorrida = $wType === 'corrida';
+                                                    ?>
                                                     <tr>
                                                         <td><?php echo htmlspecialchars($workout['nome_exercicio']); ?></td>
-                                                        <td><?php echo (int)$workout['reps']; ?></td>
-                                                        <td><?php echo (int)$workout['num_sets']; ?></td>
-                                                        <td><?php echo $workout['kg'] === null ? '-' : number_format((float)$workout['kg'], 1, '.', ''); ?></td>
+                                                        <td>
+                                                            <?php if ($isCorrida): ?>
+                                                                <span class="badge bg-info text-dark">Corrida</span>
+                                                            <?php else: ?>
+                                                                <span class="badge bg-secondary">Exercício</span>
+                                                            <?php endif; ?>
+                                                        </td>
+                                                        <td>
+                                                            <?php if ($isCorrida): ?>
+                                                                <?php echo (int)$workout['tempo_minutos']; ?> min
+                                                            <?php else: ?>
+                                                                <?php echo htmlspecialchars((string)$workout['reps']); ?>
+                                                            <?php endif; ?>
+                                                        </td>
+                                                        <td>
+                                                            <?php if ($isCorrida): ?>
+                                                                <?php echo (int)$workout['distancia_metros']; ?> m
+                                                            <?php else: ?>
+                                                                <?php echo (int)$workout['num_sets']; ?>
+                                                            <?php endif; ?>
+                                                        </td>
+                                                        <td>
+                                                            <?php if ($isCorrida): ?>
+                                                                -
+                                                            <?php else: ?>
+                                                                <?php echo $workout['kg'] === null ? '-' : number_format((float)$workout['kg'], 1, '.', ''); ?>
+                                                            <?php endif; ?>
+                                                        </td>
                                                         <td class="text-end">
                                                             <div class="d-inline-flex gap-2">
                                                                 <button
@@ -562,10 +608,13 @@ if ($exercisesResultStmt) {
                                                                     data-bs-toggle="modal"
                                                                     data-bs-target="#editWorkoutModal"
                                                                     data-exercise-id="<?php echo (int)$workout['id']; ?>"
+                                                                    data-exercise-type="<?php echo htmlspecialchars($wType, ENT_QUOTES, 'UTF-8'); ?>"
                                                                     data-exercise-name="<?php echo htmlspecialchars((string)$workout['nome_exercicio'], ENT_QUOTES, 'UTF-8'); ?>"
-                                                                    data-exercise-reps="<?php echo (int)$workout['reps']; ?>"
+                                                                    data-exercise-reps="<?php echo htmlspecialchars((string)$workout['reps'], ENT_QUOTES, 'UTF-8'); ?>"
                                                                     data-exercise-sets="<?php echo (int)$workout['num_sets']; ?>"
                                                                     data-exercise-kg="<?php echo $workout['kg'] === null ? '' : htmlspecialchars((string)$workout['kg'], ENT_QUOTES, 'UTF-8'); ?>"
+                                                                    data-exercise-tempo="<?php echo (int)($workout['tempo_minutos'] ?? 0); ?>"
+                                                                    data-exercise-distancia="<?php echo (int)($workout['distancia_metros'] ?? 0); ?>"
                                                                 >
                                                                     Editar
                                                                 </button>
@@ -579,7 +628,7 @@ if ($exercisesResultStmt) {
                                                 <?php endforeach; ?>
                                             <?php else: ?>
                                                 <tr>
-                                                    <td colspan="5" class="text-center text-muted py-3">Este dia ainda nao tem exercicios.</td>
+                                                    <td colspan="6" class="text-center text-muted py-3">Este dia ainda nao tem exercicios.</td>
                                                 </tr>
                                             <?php endif; ?>
                                         </tbody>
@@ -597,6 +646,7 @@ if ($exercisesResultStmt) {
 
     </main>
 
+    <!-- Modal: Criar dia -->
     <div class="modal fade" id="addDayModal" tabindex="-1" aria-labelledby="addDayModalLabel" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
@@ -618,12 +668,13 @@ if ($exercisesResultStmt) {
         </div>
     </div>
 
+    <!-- Modal: Adicionar exercício / corrida -->
     <div class="modal fade" id="addWorkoutModal" tabindex="-1" aria-labelledby="addWorkoutModalLabel" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
                 <form id="workoutForm" method="POST" action="main.php">
                     <div class="modal-header">
-                        <h5 class="modal-title" id="addWorkoutModalLabel">Adicionar exercicio</h5>
+                        <h5 class="modal-title" id="addWorkoutModalLabel">Adicionar ao treino</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
                     </div>
                     <div class="modal-body">
@@ -641,22 +692,55 @@ if ($exercisesResultStmt) {
                                 <div class="form-text text-danger">Cria um dia primeiro para poderes adicionar exercicios.</div>
                             <?php endif; ?>
                         </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Tipo de treino</label>
+                            <div class="d-flex gap-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="exercise_type" id="typeExercicio" value="exercicio" checked onchange="toggleAddFields(this.value)">
+                                    <label class="form-check-label" for="typeExercicio">Exercício</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="exercise_type" id="typeCorrida" value="corrida" onchange="toggleAddFields(this.value)">
+                                    <label class="form-check-label" for="typeCorrida">Corrida</label>
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="mb-3">
                             <label for="exerciseName" class="form-label">Nome</label>
                             <input type="text" class="form-control" id="exerciseName" name="nome_exercicio" required>
                         </div>
-                        <div class="row g-3">
-                            <div class="col-4">
-                                <label for="exerciseReps" class="form-label">Reps</label>
-                                <input type="number" min="1" class="form-control" id="exerciseReps" name="reps" required>
+
+                        <!-- Campos para Exercício -->
+                        <div id="addFieldsExercicio">
+                            <div class="row g-3">
+                                <div class="col-4">
+                                    <label for="exerciseReps" class="form-label">Reps</label>
+                                    <input type="text" class="form-control" id="exerciseReps" name="reps" placeholder="Ex: 10 ou até à falha">
+                                </div>
+                                <div class="col-4">
+                                    <label for="exerciseSets" class="form-label">Sets</label>
+                                    <input type="number" min="1" class="form-control" id="exerciseSets" name="num_sets">
+                                </div>
+                                <div class="col-4">
+                                    <label for="exerciseKg" class="form-label">Kg</label>
+                                    <input type="number" min="0" step="0.5" class="form-control" id="exerciseKg" name="kg" placeholder="Opcional">
+                                </div>
                             </div>
-                            <div class="col-4">
-                                <label for="exerciseSets" class="form-label">Sets</label>
-                                <input type="number" min="1" class="form-control" id="exerciseSets" name="num_sets" required>
-                            </div>
-                            <div class="col-4">
-                                <label for="exerciseKg" class="form-label">Kg</label>
-                                <input type="number" min="0" step="0.5" class="form-control" id="exerciseKg" name="kg" placeholder="Opcional">
+                        </div>
+
+                        <!-- Campos para Corrida -->
+                        <div id="addFieldsCorrida" style="display:none;">
+                            <div class="row g-3">
+                                <div class="col-6">
+                                    <label for="exerciseTempo" class="form-label">Tempo (min)</label>
+                                    <input type="number" min="1" class="form-control" id="exerciseTempo" name="tempo_minutos" placeholder="Ex: 30">
+                                </div>
+                                <div class="col-6">
+                                    <label for="exerciseDistancia" class="form-label">Distância (m)</label>
+                                    <input type="number" min="1" class="form-control" id="exerciseDistancia" name="distancia_metros" placeholder="Ex: 5000">
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -669,6 +753,7 @@ if ($exercisesResultStmt) {
         </div>
     </div>
 
+    <!-- Modal: Exemplos -->
     <div class="modal fade" id="exampleTemplatesModal" tabindex="-1" aria-labelledby="exampleTemplatesModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
@@ -685,7 +770,7 @@ if ($exercisesResultStmt) {
                                     <h3 class="h6 mb-2"><?php echo htmlspecialchars((string)$templateData['day_name']); ?></h3>
                                     <ul class="mb-0 small">
                                         <?php foreach ($templateData['exercises'] as $exercisePreview): ?>
-                                            <li><?php echo htmlspecialchars((string)$exercisePreview['nome']) . ' - ' . (int)$exercisePreview['sets'] . ' x ' . (int)$exercisePreview['reps']; ?></li>
+                                            <li><?php echo htmlspecialchars((string)$exercisePreview['nome']) . ' - ' . (int)$exercisePreview['sets'] . ' x ' . htmlspecialchars((string)$exercisePreview['reps']); ?></li>
                                         <?php endforeach; ?>
                                     </ul>
                                 </div>
@@ -701,6 +786,7 @@ if ($exercisesResultStmt) {
         </div>
     </div>
 
+    <!-- Modal: Editar exercício -->
     <div class="modal fade" id="editWorkoutModal" tabindex="-1" aria-labelledby="editWorkoutModalLabel" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
@@ -711,22 +797,55 @@ if ($exercisesResultStmt) {
                     </div>
                     <div class="modal-body">
                         <input type="hidden" name="exercise_id" id="editExerciseId">
+
+                        <div class="mb-3">
+                            <label class="form-label">Tipo de treino</label>
+                            <div class="d-flex gap-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="exercise_type" id="editTypeExercicio" value="exercicio" checked onchange="toggleEditFields(this.value)">
+                                    <label class="form-check-label" for="editTypeExercicio">Exercício</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="exercise_type" id="editTypeCorrida" value="corrida" onchange="toggleEditFields(this.value)">
+                                    <label class="form-check-label" for="editTypeCorrida">Corrida</label>
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="mb-3">
                             <label for="editExerciseName" class="form-label">Nome</label>
                             <input type="text" class="form-control" id="editExerciseName" name="nome_exercicio" required>
                         </div>
-                        <div class="row g-3">
-                            <div class="col-4">
-                                <label for="editExerciseReps" class="form-label">Reps</label>
-                                <input type="number" min="1" class="form-control" id="editExerciseReps" name="reps" required>
+
+                        <!-- Campos para Exercício -->
+                        <div id="editFieldsExercicio">
+                            <div class="row g-3">
+                                <div class="col-4">
+                                    <label for="editExerciseReps" class="form-label">Reps</label>
+                                    <input type="text" class="form-control" id="editExerciseReps" name="reps" placeholder="Ex: 10 ou até à falha">
+                                </div>
+                                <div class="col-4">
+                                    <label for="editExerciseSets" class="form-label">Sets</label>
+                                    <input type="number" min="1" class="form-control" id="editExerciseSets" name="num_sets">
+                                </div>
+                                <div class="col-4">
+                                    <label for="editExerciseKg" class="form-label">Kg</label>
+                                    <input type="number" min="0" step="0.5" class="form-control" id="editExerciseKg" name="kg" placeholder="Opcional">
+                                </div>
                             </div>
-                            <div class="col-4">
-                                <label for="editExerciseSets" class="form-label">Sets</label>
-                                <input type="number" min="1" class="form-control" id="editExerciseSets" name="num_sets" required>
-                            </div>
-                            <div class="col-4">
-                                <label for="editExerciseKg" class="form-label">Kg</label>
-                                <input type="number" min="0" step="0.5" class="form-control" id="editExerciseKg" name="kg" placeholder="Opcional">
+                        </div>
+
+                        <!-- Campos para Corrida -->
+                        <div id="editFieldsCorrida" style="display:none;">
+                            <div class="row g-3">
+                                <div class="col-6">
+                                    <label for="editExerciseTempo" class="form-label">Tempo (min)</label>
+                                    <input type="number" min="1" class="form-control" id="editExerciseTempo" name="tempo_minutos">
+                                </div>
+                                <div class="col-6">
+                                    <label for="editExerciseDistancia" class="form-label">Distância (m)</label>
+                                    <input type="number" min="1" class="form-control" id="editExerciseDistancia" name="distancia_metros">
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -741,19 +860,72 @@ if ($exercisesResultStmt) {
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        function toggleAddFields(type) {
+            document.getElementById('addFieldsExercicio').style.display = type === 'corrida' ? 'none' : '';
+            document.getElementById('addFieldsCorrida').style.display = type === 'corrida' ? '' : 'none';
+
+            const repsEl = document.getElementById('exerciseReps');
+            const setsEl = document.getElementById('exerciseSets');
+            const tempoEl = document.getElementById('exerciseTempo');
+            const distEl = document.getElementById('exerciseDistancia');
+
+            if (type === 'corrida') {
+                repsEl.removeAttribute('required');
+                setsEl.removeAttribute('required');
+                tempoEl.setAttribute('required', '');
+                distEl.setAttribute('required', '');
+            } else {
+                repsEl.setAttribute('required', '');
+                setsEl.setAttribute('required', '');
+                tempoEl.removeAttribute('required');
+                distEl.removeAttribute('required');
+            }
+        }
+
+        function toggleEditFields(type) {
+            document.getElementById('editFieldsExercicio').style.display = type === 'corrida' ? 'none' : '';
+            document.getElementById('editFieldsCorrida').style.display = type === 'corrida' ? '' : 'none';
+
+            const repsEl = document.getElementById('editExerciseReps');
+            const setsEl = document.getElementById('editExerciseSets');
+            const tempoEl = document.getElementById('editExerciseTempo');
+            const distEl = document.getElementById('editExerciseDistancia');
+
+            if (type === 'corrida') {
+                repsEl.removeAttribute('required');
+                setsEl.removeAttribute('required');
+                tempoEl.setAttribute('required', '');
+                distEl.setAttribute('required', '');
+            } else {
+                repsEl.setAttribute('required', '');
+                setsEl.setAttribute('required', '');
+                tempoEl.removeAttribute('required');
+                distEl.removeAttribute('required');
+            }
+        }
+
+        // Inicializa required no modal de adicionar
+        toggleAddFields('exercicio');
+
         const editWorkoutModal = document.getElementById('editWorkoutModal');
         if (editWorkoutModal) {
             editWorkoutModal.addEventListener('show.bs.modal', function (event) {
-                const triggerButton = event.relatedTarget;
-                if (!triggerButton) {
-                    return;
-                }
+                const btn = event.relatedTarget;
+                if (!btn) return;
 
-                document.getElementById('editExerciseId').value = triggerButton.getAttribute('data-exercise-id') || '';
-                document.getElementById('editExerciseName').value = triggerButton.getAttribute('data-exercise-name') || '';
-                document.getElementById('editExerciseReps').value = triggerButton.getAttribute('data-exercise-reps') || '';
-                document.getElementById('editExerciseSets').value = triggerButton.getAttribute('data-exercise-sets') || '';
-                document.getElementById('editExerciseKg').value = triggerButton.getAttribute('data-exercise-kg') || '';
+                const type = btn.getAttribute('data-exercise-type') || 'exercicio';
+
+                document.getElementById('editExerciseId').value = btn.getAttribute('data-exercise-id') || '';
+                document.getElementById('editExerciseName').value = btn.getAttribute('data-exercise-name') || '';
+                document.getElementById('editExerciseReps').value = btn.getAttribute('data-exercise-reps') || '';
+                document.getElementById('editExerciseSets').value = btn.getAttribute('data-exercise-sets') || '';
+                document.getElementById('editExerciseKg').value = btn.getAttribute('data-exercise-kg') || '';
+                document.getElementById('editExerciseTempo').value = btn.getAttribute('data-exercise-tempo') || '';
+                document.getElementById('editExerciseDistancia').value = btn.getAttribute('data-exercise-distancia') || '';
+
+                document.getElementById('editTypeExercicio').checked = type !== 'corrida';
+                document.getElementById('editTypeCorrida').checked = type === 'corrida';
+                toggleEditFields(type);
             });
         }
     </script>
