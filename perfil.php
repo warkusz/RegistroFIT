@@ -237,8 +237,8 @@ if ($userId > 0) {
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Perfil</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
-    <link rel="icon" type="image/png" href="/RegistroFIT-main/images/2307827.png" />
-    <link rel="stylesheet" href="/RegistroFIT-main/style.css" />
+    <link rel="icon" type="image/png" href="images/2307827.png" />
+    <link rel="stylesheet" href="style.css" />
 </head>
 <body>
     <main class="d-flex flex-nowrap vh-100">
@@ -246,7 +246,7 @@ if ($userId > 0) {
         <div class="d-flex flex-column flex-shrink-0 p-3 text-bg-dark" style="width: 280px;">
             <a href="index.html" class="d-flex align-items-center mb-3 mb-md-0 me-md-auto text-white text-decoration-none">
                 <svg class="bi pe-none" width="40" height="32"></svg>
-                <img src="/RegistroFIT-main/images/2307827.png" alt="Workout Planner Logo" width="62" height="60" class="me-4" />
+                <img src="images/2307827.png" alt="Workout Planner Logo" width="62" height="60" class="me-4" />
                 <span class="fs-4">RegistoFIT</span>
             </a>
             <hr>
@@ -431,6 +431,6 @@ if ($userId > 0) {
             });
         })();
     </script>
-    <script src="/RegistroFIT-main/page-transitions.js" defer></script>
+    <script src="page-transitions.js" defer></script>
 </body>
 </html>

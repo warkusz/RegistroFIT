@@ -95,9 +95,9 @@ if ($userDayUniqueIndex instanceof mysqli_result) {
 // Catálogo de exemplos pré-definidos para popular rapidamente o plano de treino.
 $exampleTemplates = [
     'leg-day' => [
-        'day_name' => ' Pernas',
+        'day_name' => ' Leg Day',
         'exercises' => [
-            ['nome' => 'Agachamento livre (Peso Corporal)', 'sets' => 3, 'reps' => 12],
+            ['nome' => 'Agachamento livre (bodyweight)', 'sets' => 3, 'reps' => 12],
             ['nome' => 'Leg press (maquina)', 'sets' => 3, 'reps' => 10],
             ['nome' => 'Cadeira extensora', 'sets' => 3, 'reps' => 12],
             ['nome' => 'Mesa flexora', 'sets' => 3, 'reps' => 12],
@@ -108,7 +108,7 @@ $exampleTemplates = [
         'day_name' => ' Peito + Triceps',
         'exercises' => [
             ['nome' => 'Supino com halteres', 'sets' => 3, 'reps' => 10],
-            ['nome' => 'Flexoes ', 'sets' => 3, 'reps' => 12],
+            ['nome' => 'Flexoes (push-ups)', 'sets' => 3, 'reps' => 12],
             ['nome' => 'Crucifixo com halteres', 'sets' => 3, 'reps' => 12],
             ['nome' => 'Triceps na polia (corda)', 'sets' => 3, 'reps' => 12],
             ['nome' => 'Extensao de triceps (halter)', 'sets' => 3, 'reps' => 12]
@@ -412,8 +412,8 @@ if ($exercisesResultStmt) {
     <title>Página Principal</title>
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
-    <link rel="icon" type="image/png" href="/RegistroFIT-main/images/2307827.png" />
-    <link rel="stylesheet" href="/RegistroFIT-main/style.css" />
+    <link rel="icon" type="image/png" href="images/2307827.png" />
+    <link rel="stylesheet" href="style.css" />
 </head>
 
 <body>
@@ -423,7 +423,7 @@ if ($exercisesResultStmt) {
             <a href="index.html" class="d-flex align-items-center mb-3 mb-md-0 me-md-auto text-white text-decoration-none">
                 <svg class="bi pe-none" width="40" height="32"></svg>
                  <img
-                            src="/RegistroFIT-main/images/2307827.png"
+                            src="images/2307827.png"
                             alt="Workout Planner Logo"
                             width="62"
                             height="60"
@@ -757,6 +757,6 @@ if ($exercisesResultStmt) {
             });
         }
     </script>
-    <script src="/RegistroFIT-main/page-transitions.js" defer></script>
+    <script src="page-transitions.js" defer></script>
 </body>
 </html>

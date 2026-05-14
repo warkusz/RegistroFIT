@@ -70,8 +70,8 @@ if (isset($_POST['btn-login'])) {
             href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
             rel="stylesheet"
         />
-        <link rel="icon" type="image/png" href="/RegistroFIT-main/images/2307827.png" />
-        <link rel="stylesheet" href="/RegistroFIT-main/style.css" />
+        <link rel="icon" type="image/png" href="images/2307827.png" />
+        <link rel="stylesheet" href="style.css" />
     </head>
 
     <body class="d-flex flex-column min-vh-100 text-white">
@@ -86,7 +86,7 @@ if (isset($_POST['btn-login'])) {
                         class="d-flex align-items-center mb-2 mb-lg-0 text-white text-decoration-none"
                     >
                         <img
-                            src="/RegistroFIT-main/images/2307827.png"
+                            src="images/2307827.png"
                             alt="Workout Planner Logo"
                             width="62"
                             height="60"
@@ -178,6 +178,6 @@ if (isset($_POST['btn-login'])) {
         <footer class="footer mt-auto p-3 py-3 text-white-50 text-center">
             Marcos Costa Projeto PAP - Ano letivo 2025/2026
         </footer>
-        <script src="/RegistroFIT-main/page-transitions.js" defer></script>
+        <script src="page-transitions.js" defer></script>
     </body>
 </html>
