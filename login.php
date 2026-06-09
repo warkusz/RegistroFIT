@@ -38,7 +38,7 @@ if (isset($_POST['btn-login'])) {
 
             if ($dados) {
                 // Aceita hash moderno e mantém compatibilidade com palavras-passe antigas.
-                $senhaValida = password_verify($senha, $dados['senha']) || hash_equals($dados['senha'], $senha);
+                $senhaValida = password_verify($senha, $dados['senha']);
 
                 if ($senhaValida) {
                     // Guarda dados essenciais na sessão para uso nas páginas protegidas.
